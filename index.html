@@ -1,0 +1,329 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { 
+  Beaker, BookOpen, Brain, RefreshCw, ChevronLeft, 
+  CheckCircle2, XCircle, Timer, Trophy, Star, 
+  ThumbsUp, Smile, AlertCircle 
+} from 'lucide-react';
+
+// 원소 데이터 (1-20번 + Br, I + 주요 금속 9종)
+const ELEMENTS_DATA = [
+  { atomicNumber: 1, symbol: 'H', name: '수소', group: 1, period: 1, category: 'nonmetal', valence: 1 },
+  { atomicNumber: 2, symbol: 'He', name: '헬륨', group: 18, period: 1, category: 'noble-gas', valence: 0 },
+  { atomicNumber: 3, symbol: 'Li', name: '리튬', group: 1, period: 2, category: 'alkali-metal', valence: 1 },
+  { atomicNumber: 4, symbol: 'Be', name: '베릴륨', group: 2, period: 2, category: 'metal', valence: 2 },
+  { atomicNumber: 5, symbol: 'B', name: '붕소', group: 13, period: 2, category: 'metalloid', valence: 3 },
+  { atomicNumber: 6, symbol: 'C', name: '탄소', group: 14, period: 2, category: 'nonmetal', valence: 4 },
+  { atomicNumber: 7, symbol: 'N', name: '질소', group: 15, period: 2, category: 'nonmetal', valence: 5 },
+  { atomicNumber: 8, symbol: 'O', name: '산소', group: 16, period: 2, category: 'nonmetal', valence: 6 },
+  { atomicNumber: 9, symbol: 'F', name: '플루오린', group: 17, period: 2, category: 'halogen', valence: 7 },
+  { atomicNumber: 10, symbol: 'Ne', name: '네온', group: 18, period: 2, category: 'noble-gas', valence: 0 },
+  { atomicNumber: 11, symbol: 'Na', name: '나트륨', group: 1, period: 3, category: 'alkali-metal', valence: 1 },
+  { atomicNumber: 12, symbol: 'Mg', name: '마그네슘', group: 2, period: 3, category: 'metal', valence: 2 },
+  { atomicNumber: 13, symbol: 'Al', name: '알루미늄', group: 13, period: 3, category: 'metal', valence: 3 },
+  { atomicNumber: 14, symbol: 'Si', name: '규소', group: 14, period: 3, category: 'metalloid', valence: 4 },
+  { atomicNumber: 15, symbol: 'P', name: '인', group: 15, period: 3, category: 'nonmetal', valence: 5 },
+  { atomicNumber: 16, symbol: 'S', name: '황', group: 16, period: 3, category: 'nonmetal', valence: 6 },
+  { atomicNumber: 17, symbol: 'Cl', name: '염소', group: 17, period: 3, category: 'halogen', valence: 7 },
+  { atomicNumber: 18, symbol: 'Ar', name: '아르곤', group: 18, period: 3, category: 'noble-gas', valence: 0 },
+  { atomicNumber: 19, symbol: 'K', name: '칼륨', group: 1, period: 4, category: 'alkali-metal', valence: 1 },
+  { atomicNumber: 20, symbol: 'Ca', name: '칼슘', group: 2, period: 4, category: 'metal', valence: 2 },
+  { atomicNumber: 35, symbol: 'Br', name: '브로민', group: 17, period: 4, category: 'halogen', valence: 7 },
+  { atomicNumber: 53, symbol: 'I', name: '아이오딘', group: 17, period: 5, category: 'halogen', valence: 7 },
+  { atomicNumber: 26, symbol: 'Fe', name: '철', category: 'metal', isExtra: true },
+  { atomicNumber: 28, symbol: 'Ni', name: '니켈', category: 'metal', isExtra: true },
+  { atomicNumber: 29, symbol: 'Cu', name: '구리', category: 'metal', isExtra: true },
+  { atomicNumber: 30, symbol: 'Zn', name: '아연', category: 'metal', isExtra: true },
+  { atomicNumber: 47, symbol: 'Ag', name: '은', category: 'metal', isExtra: true },
+  { atomicNumber: 79, symbol: 'Au', name: '금', category: 'metal', isExtra: true },
+  { atomicNumber: 80, symbol: 'Hg', name: '수은', category: 'metal', isExtra: true },
+  { atomicNumber: 82, symbol: 'Pb', name: '납', category: 'metal', isExtra: true },
+  { atomicNumber: 92, symbol: 'U', name: '우라늄', category: 'metal', isExtra: true },
+];
+
+const CATEGORY_COLORS = {
+  'nonmetal': 'bg-blue-50 border-blue-200 text-blue-700',
+  'noble-gas': 'bg-purple-50 border-purple-200 text-purple-700',
+  'alkali-metal': 'bg-red-50 border-red-200 text-red-700',
+  'metal': 'bg-slate-50 border-slate-200 text-slate-700',
+  'metalloid': 'bg-emerald-50 border-emerald-200 text-emerald-700',
+  'halogen': 'bg-yellow-50 border-yellow-200 text-yellow-700',
+};
+
+const CATEGORY_LABELS = {
+  'alkali-metal': '알칼리 금속',
+  'halogen': '할로젠',
+  'noble-gas': '비활성 기체',
+  'nonmetal': '비금속',
+  'metalloid': '준금속',
+  'metal': '금속'
+};
+
+const TIMER_SECONDS = 8;
+const QUIZ_COUNT = 25;
+
+export default function App() {
+  const [view, setView] = useState('home'); 
+  const [quizState, setQuizState] = useState({
+    questions: [],
+    currentIndex: 0,
+    score: 0,
+    answers: [],
+    showFeedback: false,
+    selectedOption: null,
+    timeLeft: TIMER_SECONDS
+  });
+
+  const getElementDisplay = (element) => Math.random() > 0.5 ? element.name : element.symbol;
+
+  const getRandomOptions = (correct, pool) => {
+    return pool
+      .filter(item => item !== correct)
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 3);
+  };
+
+  const startQuiz = () => {
+    const shuffledElements = [...ELEMENTS_DATA].sort(() => Math.random() - 0.5).slice(0, QUIZ_COUNT);
+    const questions = shuffledElements.map(element => {
+      let validTypes = [0]; 
+      if (!element.isExtra) {
+        validTypes.push(1, 3); 
+        if (element.atomicNumber <= 20) validTypes.push(2); 
+        if (element.category !== 'metalloid') validTypes.push(4); 
+      }
+      
+      const type = validTypes[Math.floor(Math.random() * validTypes.length)];
+      let questionText = "";
+      let correctAnswer = "";
+      let options = [];
+      const display = getElementDisplay(element);
+
+      switch (type) {
+        case 0:
+          if (display === element.name) {
+            questionText = `원소 '${element.name}'의 기호는?`;
+            correctAnswer = element.symbol;
+            options = [element.symbol, ...getRandomOptions(element.symbol, ELEMENTS_DATA.map(e => e.symbol))];
+          } else {
+            questionText = `원소 기호 '${element.symbol}'의 이름은?`;
+            correctAnswer = element.name;
+            options = [element.name, ...getRandomOptions(element.name, ELEMENTS_DATA.map(e => e.name))];
+          }
+          break;
+        case 1:
+          questionText = `'${display}'은(는) 몇 족 원소인가요?`;
+          correctAnswer = `${element.group}족`;
+          options = [`${element.group}족`, ...getRandomOptions(`${element.group}족`, Array.from(new Set(ELEMENTS_DATA.filter(e => !e.isExtra).map(e => `${e.group}족`))))];
+          break;
+        case 2:
+          questionText = `'${display}'은(는) 몇 주기 원소인가요?`;
+          correctAnswer = `${element.period}주기`;
+          options = [`${element.period}주기`, ...getRandomOptions(`${element.period}주기`, ["1주기", "2주기", "3주기", "4주기"])];
+          break;
+        case 3:
+          questionText = `'${display}'의 원자가 전자 수는 몇 개인가요?`;
+          correctAnswer = `${element.valence}개`;
+          options = [`${element.valence}개`, ...getRandomOptions(`${element.valence}개`, ["0개", "1개", "2개", "3개", "4개", "5개", "6개", "7개"])];
+          break;
+        case 4:
+          if (['alkali-metal', 'halogen', 'noble-gas'].includes(element.category)) {
+            questionText = `'${display}'은(는) 다음 중 어디에 해당하나요?`;
+            correctAnswer = CATEGORY_LABELS[element.category];
+            options = [correctAnswer, "알칼리 금속", "할로젠", "비활성 기체", "비금속"].slice(0, 4);
+          } else {
+            questionText = `'${display}'은(는) 금속인가요, 비금속인가요?`;
+            correctAnswer = (element.category === 'metal' || element.category === 'alkali-metal') ? "금속" : "비금속";
+            options = ["금속", "비금속"];
+          }
+          break;
+        default:
+          questionText = `원소 '${element.name}'의 기호는?`;
+          correctAnswer = element.symbol;
+          options = [element.symbol, ...getRandomOptions(element.symbol, ELEMENTS_DATA.map(e => e.symbol))];
+      }
+      return { element, questionText, correctAnswer, options: Array.from(new Set(options)).sort(() => Math.random() - 0.5) };
+    });
+
+    setQuizState({ questions, currentIndex: 0, score: 0, answers: [], showFeedback: false, selectedOption: null, timeLeft: TIMER_SECONDS });
+    setView('quiz');
+  };
+
+  const handleAnswer = useCallback((option) => {
+    if (quizState.showFeedback) return;
+    const currentQuestion = quizState.questions[quizState.currentIndex];
+    const isCorrect = option === currentQuestion.correctAnswer;
+    setQuizState(prev => ({
+      ...prev, selectedOption: option, showFeedback: true, score: isCorrect ? prev.score + 1 : prev.score,
+      answers: [...prev.answers, { question: currentQuestion.questionText, selected: option || "시간 초과", correct: currentQuestion.correctAnswer, isCorrect }]
+    }));
+    setTimeout(() => {
+      if (quizState.currentIndex < quizState.questions.length - 1) {
+        setQuizState(prev => ({ ...prev, currentIndex: prev.currentIndex + 1, showFeedback: false, selectedOption: null, timeLeft: TIMER_SECONDS }));
+      } else { setView('result'); }
+    }, 1500);
+  }, [quizState]);
+
+  useEffect(() => {
+    if (view !== 'quiz' || quizState.showFeedback) return;
+    if (quizState.timeLeft <= 0) { handleAnswer(null); return; }
+    const timer = setInterval(() => { setQuizState(prev => ({ ...prev, timeLeft: prev.timeLeft - 1 })); }, 1000);
+    return () => clearInterval(timer);
+  }, [view, quizState.timeLeft, quizState.showFeedback, handleAnswer]);
+
+  const getScoreFeedback = () => {
+    const percentage = (quizState.score / QUIZ_COUNT) * 100;
+    if (percentage === 100) return { message: "대단해요! 원소 마스터입니다! 🏆", sub: "완벽하게 알고 계시네요!", icon: <Trophy size={64} className="text-yellow-500" />, color: "text-yellow-600" };
+    if (percentage >= 90) return { message: "훌륭합니다! 우수한 실력이에요! ✨", sub: "조금만 더 하면 만점이에요!", icon: <Star size={64} className="text-yellow-400" />, color: "text-amber-600" };
+    if (percentage >= 70) return { message: "잘하고 있어요! 수준급입니다. 👍", sub: "복습하면 만점이 멀지 않았어요!", icon: <ThumbsUp size={64} className="text-blue-500" />, color: "text-blue-600" };
+    if (percentage >= 50) return { message: "좋은 시작입니다! 연습해 봐요. 😊", sub: "절반 이상을 정확히 알고 계시네요!", icon: <Smile size={64} className="text-emerald-500" />, color: "text-emerald-600" };
+    return { message: "노력이 필요해요! 💪", sub: "학습 모드에서 더 공부해보세요!", icon: <AlertCircle size={64} className="text-slate-400" />, color: "text-slate-600" };
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-900 p-4 md:p-8 font-sans">
+      <div className="max-w-6xl mx-auto">
+        <header className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-indigo-600 rounded-lg text-white"><Beaker size={28} /></div>
+            <h1 className="text-2xl font-bold">주기율표 마스터</h1>
+          </div>
+          {view !== 'home' && (
+            <button onClick={() => setView('home')} className="flex items-center gap-1 text-slate-500 font-medium hover:text-indigo-600"><ChevronLeft size={20} /> 처음으로</button>
+          )}
+        </header>
+
+        <main className="bg-white rounded-3xl shadow-xl p-6 md:p-8 min-h-[550px] flex flex-col relative overflow-hidden">
+          {view === 'home' && (
+            <div className="flex-1 flex flex-col items-center justify-center text-center space-y-8 max-w-4xl mx-auto">
+              <div className="space-y-4">
+                <h2 className="text-4xl font-black text-slate-800 leading-tight">원소의 모든 정보를 <br/><span className="text-indigo-600">완벽하게</span> 맞혀보세요!</h2>
+                <p className="text-slate-500 max-w-md mx-auto">원소 기호, 이름부터 족, 주기, 화학적 분류까지 다양한 유형의 문제를 풀어보세요.</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-lg">
+                <button onClick={() => setView('study')} className="group p-6 border-2 border-indigo-50 rounded-2xl hover:border-indigo-500 hover:bg-indigo-50 transition-all text-left bg-white">
+                  <BookOpen size={32} className="mb-3 text-indigo-600 group-hover:scale-110" />
+                  <h3 className="font-bold text-lg">학습 모드</h3>
+                  <p className="text-sm text-slate-500">핵심 원소들의 정보를 확인하며 학습합니다.</p>
+                </button>
+                <button onClick={startQuiz} className="group p-6 border-2 border-emerald-50 rounded-2xl hover:border-emerald-500 hover:bg-emerald-50 transition-all text-left bg-white">
+                  <Brain size={32} className="mb-3 text-emerald-600 group-hover:scale-110" />
+                  <h3 className="font-bold text-lg">실전 퀴즈</h3>
+                  <p className="text-sm text-slate-500">무작위로 출제되는 문제를 풀며 실력을 테스트합니다.</p>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {view === 'study' && (
+            <div className="flex-1 space-y-8">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b pb-4 gap-4">
+                <h2 className="text-2xl font-bold flex items-center gap-2"><BookOpen size={24} className="text-indigo-600" /> 주기율표 학습</h2>
+                <div className="flex flex-wrap gap-3">
+                  {['alkali-metal', 'halogen', 'noble-gas'].map(cat => (
+                    <div key={cat} className="flex items-center gap-1.5 text-xs font-bold text-slate-500">
+                      <div className={`w-4 h-4 rounded-sm border ${CATEGORY_COLORS[cat]}`}></div>
+                      <span>{CATEGORY_LABELS[cat]}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-6">
+                <h3 className="text-lg font-bold text-slate-700">1-20번 원소 및 할로젠</h3>
+                <div className="overflow-x-auto pb-6 custom-scrollbar">
+                  <div className="grid gap-2 min-w-[1050px]" style={{ gridTemplateColumns: 'repeat(18, minmax(0, 1fr))' }}>
+                    {ELEMENTS_DATA.filter(el => !el.isExtra).map((el) => (
+                      <div key={el.atomicNumber} style={{ gridColumn: el.group, gridRow: el.period }}
+                        className={`p-3 border-2 rounded-2xl flex flex-col items-center justify-between bg-white ${CATEGORY_COLORS[el.category] || 'bg-slate-50 border-slate-200'}`}>
+                        <div className="w-full flex justify-between text-[10px] font-black opacity-60"><span>{el.atomicNumber}</span><span>{el.group}족</span></div>
+                        <span className="text-3xl font-black py-1">{el.symbol}</span>
+                        <span className="text-sm font-bold">{el.name}</span>
+                        <div className="w-full mt-1.5 pt-1.5 border-t border-current border-opacity-10 text-center text-[10px] opacity-70 uppercase font-bold">
+                          {CATEGORY_LABELS[el.category] || '원소'}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <h3 className="text-lg font-bold text-slate-700">기타 주요 금속 원소 (기호 & 이름)</h3>
+                <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-3">
+                  {ELEMENTS_DATA.filter(el => el.isExtra).map((el) => (
+                    <div key={el.atomicNumber} className="p-4 border-2 border-slate-100 rounded-2xl bg-white flex flex-col items-center justify-center">
+                      <span className="text-[10px] font-black opacity-30 self-start">{el.atomicNumber}</span>
+                      <span className="text-3xl font-black">{el.symbol}</span>
+                      <span className="text-sm font-bold text-slate-600">{el.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {view === 'quiz' && (
+            <div className="flex-1 flex flex-col space-y-8 max-w-4xl mx-auto w-full">
+              <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-1 w-1/3">
+                  <span className="text-xs font-bold text-slate-400">PROGRESS</span>
+                  <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-indigo-500 transition-all" style={{ width: `${((quizState.currentIndex + 1) / QUIZ_COUNT) * 100}%` }}></div>
+                  </div>
+                </div>
+                <div className={`flex flex-col items-center w-1/3 ${quizState.timeLeft <= 3 ? 'text-red-500 animate-pulse' : 'text-slate-600'}`}>
+                  <Timer size={24} /><span className="text-xl font-black">{quizState.timeLeft}s</span>
+                </div>
+                <div className="flex flex-col items-end w-1/3"><span className="text-xs font-bold text-slate-400">SCORE</span><span className="text-xl font-black text-indigo-600">{quizState.score}</span></div>
+              </div>
+              <div className="flex-1 flex flex-col items-center justify-center space-y-10 py-4">
+                <div className="text-center space-y-4">
+                  <span className="inline-block px-4 py-1.5 bg-indigo-50 text-indigo-600 text-[10px] font-black rounded-full border border-indigo-100 uppercase">Q. {quizState.currentIndex + 1} / {QUIZ_COUNT}</span>
+                  <h3 className="text-2xl md:text-4xl font-black text-slate-800 break-keep">{quizState.questions[quizState.currentIndex].questionText}</h3>
+                </div>
+                <div className={`grid ${quizState.questions[quizState.currentIndex].options.length === 2 ? 'grid-cols-2' : 'grid-cols-1 sm:grid-cols-2'} gap-4 w-full max-w-xl`}>
+                  {quizState.questions[quizState.currentIndex].options.map((option, idx) => {
+                    const isCorrect = option === quizState.questions[quizState.currentIndex].correctAnswer;
+                    const isSelected = quizState.selectedOption === option;
+                    let bCls = "group p-6 border-2 rounded-2xl text-lg font-bold transition-all flex items-center justify-between ";
+                    if (quizState.showFeedback) {
+                      if (isCorrect) bCls += "border-emerald-500 bg-emerald-50 text-emerald-700 ring-4 ring-emerald-100";
+                      else if (isSelected) bCls += "border-red-500 bg-red-50 text-red-700";
+                      else bCls += "border-slate-50 opacity-40";
+                    } else { bCls += "border-slate-100 hover:border-indigo-400 bg-white text-slate-700"; }
+                    return (
+                      <button key={idx} disabled={quizState.showFeedback} onClick={() => handleAnswer(option)} className={bCls}>
+                        <span>{option}</span>
+                        {quizState.showFeedback && (isCorrect ? <CheckCircle2 className="text-emerald-600" /> : isSelected ? <XCircle className="text-red-600" /> : null)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {view === 'result' && (
+            <div className="flex-1 flex flex-col items-center justify-center text-center space-y-8 max-w-4xl mx-auto w-full">
+              <div className="relative">
+                <div className="mb-4 flex justify-center">{getScoreFeedback().icon}</div>
+                <div className="w-48 h-48 rounded-full border-[12px] border-slate-50 flex items-center justify-center shadow-inner mx-auto">
+                  <div className="text-center"><span className={`text-6xl font-black ${getScoreFeedback().color}`}>{quizState.score}</span><span className="text-xl font-bold text-slate-400 block">/ {QUIZ_COUNT}</span></div>
+                </div>
+              </div>
+              <div className="space-y-4">
+                <h2 className={`text-3xl font-black ${getScoreFeedback().color}`}>{getScoreFeedback().message}</h2>
+                <p className="text-slate-500 font-medium">{getScoreFeedback().sub}</p>
+              </div>
+              <div className="flex gap-4 w-full max-w-sm pt-4">
+                <button onClick={startQuiz} className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-black hover:bg-indigo-700 shadow-xl flex items-center justify-center gap-2"><RefreshCw size={20} /> 다시 도전</button>
+                <button onClick={() => setView('home')} className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-200">홈으로</button>
+              </div>
+            </div>
+          )}
+        </main>
+        
+        <footer className="mt-8 flex flex-col items-center gap-1">
+          <div className="text-slate-400 text-[11px] font-medium tracking-wide">Created by <span className="text-indigo-500 font-extrabold">쿙쌤</span></div>
+        </footer>
+      </div>
+      <style>{`.custom-scrollbar::-webkit-scrollbar { height: 10px; } .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; } .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }`}</style>
+    </div>
+  );
+}
