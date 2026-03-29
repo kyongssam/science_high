@@ -11,8 +11,8 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;700;900&display=swap');
-        body { font-family: 'Pretendard', sans-serif; }
-        .custom-scrollbar::-webkit-scrollbar { height: 10px; }
+        body { font-family: 'Pretendard', sans-serif; overflow-x: hidden; }
+        .custom-scrollbar::-webkit-scrollbar { height: 8px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         .grid-cols-18 { grid-template-columns: repeat(18, minmax(0, 1fr)); }
@@ -22,20 +22,23 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useCallback } = React;
+        const { useState, useEffect, useCallback, useMemo } = React;
 
-        // 아이콘 헬퍼
-        const Icon = ({ name, size = 24, className = "" }) => {
+        // 아이콘 표시용 안전 컴포넌트
+        const LucideIcon = ({ name, size = 24, className = "" }) => {
             const [svg, setSvg] = useState("");
             useEffect(() => {
-                if (window.lucide) {
-                    const icon = window.lucide.icons[name];
-                    if (icon) {
+                const timer = setTimeout(() => {
+                    if (window.lucide && window.lucide.icons[name]) {
+                        const icon = window.lucide.icons[name];
                         setSvg(icon.toSvg({ size, class: className }));
                     }
-                }
+                }, 100);
+                return () => clearTimeout(timer);
             }, [name, size, className]);
-            return <span className="inline-block" dangerouslySetInnerHTML={{ __html: svg }} />;
+            
+            if (!svg) return <span style={{width: size, height: size, display: 'inline-block'}}></span>;
+            return <span className="inline-flex" dangerouslySetInnerHTML={{ __html: svg }} />;
         };
 
         const ELEMENTS_DATA = [
@@ -72,15 +75,6 @@
             { atomicNumber: 92, symbol: 'U', name: '우라늄', category: 'metal', isExtra: true },
         ];
 
-        const CATEGORY_COLORS = {
-            'nonmetal': 'bg-blue-50 border-blue-200 text-blue-700',
-            'noble-gas': 'bg-purple-50 border-purple-200 text-purple-700',
-            'alkali-metal': 'bg-red-50 border-red-200 text-red-700',
-            'metal': 'bg-slate-50 border-slate-200 text-slate-700',
-            'metalloid': 'bg-emerald-50 border-emerald-200 text-emerald-700',
-            'halogen': 'bg-yellow-50 border-yellow-200 text-yellow-700',
-        };
-
         const CATEGORY_LABELS = {
             'alkali-metal': '알칼리 금속',
             'halogen': '할로젠',
@@ -90,8 +84,17 @@
             'metal': '금속'
         };
 
-        const TIMER_SECONDS = 8;
+        const CATEGORY_COLORS = {
+            'nonmetal': 'bg-blue-50 border-blue-200 text-blue-700',
+            'noble-gas': 'bg-purple-50 border-purple-200 text-purple-700',
+            'alkali-metal': 'bg-red-50 border-red-200 text-red-700',
+            'metal': 'bg-slate-50 border-slate-200 text-slate-700',
+            'metalloid': 'bg-emerald-50 border-emerald-200 text-emerald-700',
+            'halogen': 'bg-yellow-50 border-yellow-200 text-yellow-700',
+        };
+
         const QUIZ_COUNT = 25;
+        const TIMER_SECONDS = 8;
 
         function App() {
             const [view, setView] = useState('home');
@@ -100,62 +103,49 @@
             });
 
             const startQuiz = () => {
-                const shuffledElements = [...ELEMENTS_DATA].sort(() => Math.random() - 0.5).slice(0, QUIZ_COUNT);
-                const questions = shuffledElements.map(element => {
-                    let validTypes = [0];
-                    if (!element.isExtra) {
-                        validTypes.push(1, 3);
-                        if (element.atomicNumber <= 20) validTypes.push(2);
-                        if (element.category !== 'metalloid') validTypes.push(4);
+                const shuffled = [...ELEMENTS_DATA].sort(() => Math.random() - 0.5).slice(0, QUIZ_COUNT);
+                const questions = shuffled.map(el => {
+                    const types = [0];
+                    if (!el.isExtra) {
+                        types.push(1, 3);
+                        if (el.atomicNumber <= 20) types.push(2);
+                        if (el.category !== 'metalloid') types.push(4);
                     }
-                    const type = validTypes[Math.floor(Math.random() * validTypes.length)];
-                    let questionText = "", correctAnswer = "", options = [];
-                    const display = Math.random() > 0.5 ? element.name : element.symbol;
+                    const type = types[Math.floor(Math.random() * types.length)];
+                    const display = Math.random() > 0.5 ? el.name : el.symbol;
+                    let qText = "", ans = "", opts = [];
 
-                    switch (type) {
-                        case 0:
-                            questionText = display === element.name ? `원소 '${element.name}'의 기호는?` : `원소 기호 '${element.symbol}'의 이름은?`;
-                            correctAnswer = display === element.name ? element.symbol : element.name;
-                            options = [correctAnswer, ...ELEMENTS_DATA.filter(e => e.symbol !== element.symbol && e.name !== element.name).sort(() => Math.random() - 0.5).slice(0, 3).map(e => display === element.name ? e.symbol : e.name)];
-                            break;
-                        case 1:
-                            questionText = `'${display}'은(는) 몇 족 원소인가요?`;
-                            correctAnswer = `${element.group}족`;
-                            options = [correctAnswer, "1족", "2족", "17족", "18족"].filter(o => o !== correctAnswer).slice(0, 3).concat(correctAnswer);
-                            break;
-                        case 2:
-                            questionText = `'${display}'은(는) 몇 주기 원소인가요?`;
-                            correctAnswer = `${element.period}주기`;
-                            options = ["1주기", "2주기", "3주기", "4주기", "5주기"].filter(o => o !== correctAnswer).slice(0, 3).concat(correctAnswer);
-                            break;
-                        case 3:
-                            questionText = `'${display}'의 원자가 전자 수는?`;
-                            correctAnswer = `${element.valence}개`;
-                            options = ["0개", "1개", "2개", "7개"].filter(o => o !== correctAnswer).slice(0, 3).concat(correctAnswer);
-                            break;
-                        case 4:
-                            if (['alkali-metal', 'halogen', 'noble-gas'].includes(element.category)) {
-                                questionText = `'${display}'은(는) 어디에 해당하나요?`;
-                                correctAnswer = CATEGORY_LABELS[element.category];
-                                options = ["알칼리 금속", "할로젠", "비활성 기체", "비금속"];
-                            } else {
-                                questionText = `'${display}'은(는) 금속인가요, 비금속인가요?`;
-                                correctAnswer = (element.category === 'metal' || element.category === 'alkali-metal') ? "금속" : "비금속";
-                                options = ["금속", "비금속"];
-                            }
-                            break;
+                    if (type === 0) {
+                        qText = display === el.name ? `원소 '${el.name}'의 기호는?` : `원소 기호 '${el.symbol}'의 이름은?`;
+                        ans = display === el.name ? el.symbol : el.name;
+                        opts = [ans, ...ELEMENTS_DATA.filter(e => e.symbol !== el.symbol && e.name !== el.name).sort(() => Math.random() - 0.5).slice(0, 3).map(e => display === el.name ? e.symbol : e.name)];
+                    } else if (type === 1) {
+                        qText = `'${display}'은(는) 몇 족인가요?`;
+                        ans = `${el.group}족`;
+                        opts = [ans, "1족", "2족", "17족", "18족"].filter(o => o !== ans).slice(0, 3).concat(ans);
+                    } else if (type === 2) {
+                        qText = `'${display}'은(는) 몇 주기인가요?`;
+                        ans = `${el.period}주기`;
+                        opts = ["1주기", "2주기", "3주기", "4주기"].filter(o => o !== ans).slice(0, 3).concat(ans);
+                    } else if (type === 3) {
+                        qText = `'${display}'의 원자가 전자 수는?`;
+                        ans = `${el.valence}개`;
+                        opts = ["0개", "1개", "2개", "7개", "8개"].filter(o => o !== ans).slice(0, 3).concat(ans);
+                    } else {
+                        qText = `'${display}'은(는) 어디에 해당하나요?`;
+                        ans = (['alkali-metal', 'halogen', 'noble-gas'].includes(el.category)) ? CATEGORY_LABELS[el.category] : (el.category.includes('metal') ? "금속" : "비금속");
+                        opts = ["알칼리 금속", "할로젠", "비활성 기체", "금속", "비금속"].filter(o => o !== ans).slice(0, 3).concat(ans);
                     }
-                    return { questionText, correctAnswer, options: Array.from(new Set(options)).sort(() => Math.random() - 0.5) };
+                    return { qText, ans, opts: Array.from(new Set(opts)).sort(() => Math.random() - 0.5) };
                 });
                 setQuizState({ questions, currentIndex: 0, score: 0, showFeedback: false, selectedOption: null, timeLeft: TIMER_SECONDS });
                 setView('quiz');
             };
 
-            const handleAnswer = useCallback((option) => {
+            const handleAnswer = useCallback((opt) => {
                 if (quizState.showFeedback) return;
-                const currentQuestion = quizState.questions[quizState.currentIndex];
-                const isCorrect = option === currentQuestion.correctAnswer;
-                setQuizState(prev => ({ ...prev, selectedOption: option, showFeedback: true, score: isCorrect ? prev.score + 1 : prev.score }));
+                const isCorrect = opt === quizState.questions[quizState.currentIndex].ans;
+                setQuizState(prev => ({ ...prev, selectedOption: opt, showFeedback: true, score: isCorrect ? prev.score + 1 : prev.score }));
                 setTimeout(() => {
                     if (quizState.currentIndex < QUIZ_COUNT - 1) {
                         setQuizState(prev => ({ ...prev, currentIndex: prev.currentIndex + 1, showFeedback: false, selectedOption: null, timeLeft: TIMER_SECONDS }));
@@ -170,111 +160,114 @@
                 return () => clearInterval(timer);
             }, [view, quizState.timeLeft, quizState.showFeedback, handleAnswer]);
 
-            const getFeedback = () => {
+            const feedback = useMemo(() => {
                 const p = (quizState.score / QUIZ_COUNT) * 100;
-                if (p === 100) return { title: "완벽해요! 원소 마스터! 🏆", sub: "축하합니다!", icon: "Trophy", color: "text-yellow-600" };
-                if (p >= 90) return { title: "거의 다 왔어요! 우수한 실력! ✨", sub: "조금만 더 하면 만점!", icon: "Star", color: "text-amber-600" };
-                if (p >= 70) return { title: "잘하고 있어요! 수준급 실력 👍", sub: "복습하면 마스터!", icon: "ThumbsUp", color: "text-blue-600" };
-                return { title: "조금 더 연습해 봐요! 😊", sub: "학습 모드에서 공부해보세요!", icon: "Smile", color: "text-slate-600" };
-            };
-
-            const fb = view === 'result' ? getFeedback() : null;
+                if (p === 100) return { t: "대단해요! 원소 마스터! 🏆", s: "완벽한 실력입니다!", i: "Trophy", c: "text-yellow-600" };
+                if (p >= 90) return { t: "훌륭합니다! 우수한 실력! ✨", s: "만점이 코앞입니다!", i: "Star", c: "text-amber-600" };
+                if (p >= 70) return { t: "잘하고 있어요! 수준급입니다. 👍", s: "조금만 더 힘내볼까요?", i: "ThumbsUp", c: "text-blue-600" };
+                return { t: "노력이 필요해요! 💪", s: "학습 모드에서 더 공부해볼까요?", i: "AlertCircle", c: "text-slate-600" };
+            }, [quizState.score]);
 
             return (
-                <div className="max-w-6xl mx-auto px-4 py-8">
-                    <header className="flex items-center justify-between mb-8">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-indigo-600 rounded-lg text-white"><Icon name="Beaker" size={28} /></div>
-                            <h1 className="text-2xl font-bold">주기율표 마스터</h1>
-                        </div>
-                        {view !== 'home' && <button onClick={() => setView('home')} className="flex items-center gap-1 text-slate-500 font-medium"><Icon name="ChevronLeft" size={20} /> 처음으로</button>}
-                    </header>
-
-                    <main className="bg-white rounded-3xl shadow-xl p-6 md:p-8 min-h-[550px] flex flex-col relative overflow-hidden">
-                        {view === 'home' && (
-                            <div className="flex-1 flex flex-col items-center justify-center text-center space-y-8">
-                                <h2 className="text-4xl font-black text-slate-800 leading-tight">원소 정보를 <br/><span className="text-indigo-600">완벽하게</span> 맞혀보세요!</h2>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-lg">
-                                    <button onClick={() => setView('study')} className="p-6 border-2 border-indigo-50 rounded-2xl hover:border-indigo-500 hover:bg-indigo-50 text-left bg-white transition-all">
-                                        <Icon name="BookOpen" size={32} className="mb-3 text-indigo-600" />
-                                        <h3 className="font-bold text-lg">학습 모드</h3>
-                                        <p className="text-sm text-slate-500">원소 정보를 한눈에 확인합니다.</p>
-                                    </button>
-                                    <button onClick={startQuiz} className="p-6 border-2 border-emerald-50 rounded-2xl hover:border-emerald-500 hover:bg-emerald-50 text-left bg-white transition-all">
-                                        <Icon name="Brain" size={32} className="mb-3 text-emerald-600" />
-                                        <h3 className="font-bold text-lg">실전 퀴즈</h3>
-                                        <p className="text-sm text-slate-500">25문제를 8초 안에 풀어보세요.</p>
-                                    </button>
-                                </div>
+                <div className="min-h-screen p-4 md:p-8">
+                    <div className="max-w-6xl mx-auto">
+                        <header className="flex items-center justify-between mb-8">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-indigo-600 rounded-lg text-white"><LucideIcon name="Beaker" size={28} /></div>
+                                <h1 className="text-2xl font-bold">주기율표 마스터</h1>
                             </div>
-                        )}
+                            {view !== 'home' && <button onClick={() => setView('home')} className="flex items-center gap-1 text-slate-500 font-medium hover:text-indigo-600"><LucideIcon name="ChevronLeft" size={20} /> 처음으로</button>}
+                        </header>
 
-                        {view === 'study' && (
-                            <div className="flex-1 space-y-8 overflow-hidden">
-                                <div className="flex items-center justify-between border-b pb-4">
-                                    <h2 className="text-2xl font-bold flex items-center gap-2"><Icon name="BookOpen" className="text-indigo-600" /> 주기율표 학습</h2>
+                        <main className="bg-white rounded-3xl shadow-xl p-6 md:p-8 min-h-[550px] flex flex-col relative overflow-hidden">
+                            {view === 'home' && (
+                                <div className="flex-1 flex flex-col items-center justify-center text-center space-y-8 max-w-4xl mx-auto">
+                                    <div className="space-y-4">
+                                        <h2 className="text-4xl font-black text-slate-800 leading-tight">원소 지식을 <br/><span className="text-indigo-600">완벽하게</span> 마스터하세요!</h2>
+                                        <p className="text-slate-500">원소 기호, 족, 주기, 전자 수까지 퀴즈로 재미있게 암기해보세요.</p>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-lg">
+                                        <button onClick={() => setView('study')} className="p-6 border-2 border-indigo-50 rounded-2xl hover:border-indigo-500 hover:bg-indigo-50 text-left bg-white transition-all">
+                                            <LucideIcon name="BookOpen" size={32} className="mb-3 text-indigo-600" />
+                                            <h3 className="font-bold text-lg">학습 모드</h3>
+                                            <p className="text-sm text-slate-500">원소 정보를 확인하며 공부합니다.</p>
+                                        </button>
+                                        <button onClick={startQuiz} className="p-6 border-2 border-emerald-50 rounded-2xl hover:border-emerald-500 hover:bg-emerald-50 text-left bg-white transition-all">
+                                            <LucideIcon name="Brain" size={32} className="mb-3 text-emerald-600" />
+                                            <h3 className="font-bold text-lg">실전 퀴즈</h3>
+                                            <p className="text-sm text-slate-500">25문제를 8초 안에 도전하세요!</p>
+                                        </button>
+                                    </div>
                                 </div>
-                                <div className="overflow-x-auto pb-6 custom-scrollbar">
-                                    <div className="grid gap-2 min-w-[1000px] grid-cols-18">
-                                        {ELEMENTS_DATA.filter(el => !el.isExtra).map(el => (
-                                            <div key={el.atomicNumber} style={{ gridColumn: el.group, gridRow: el.period }} className={`p-2 border-2 rounded-xl flex flex-col items-center justify-between bg-white ${CATEGORY_COLORS[el.category] || 'bg-slate-50'}`}>
-                                                <div className="w-full flex justify-between text-[8px] font-bold opacity-60"><span>{el.atomicNumber}</span><span>{el.group}족</span></div>
+                            )}
+
+                            {view === 'study' && (
+                                <div className="flex-1 space-y-8">
+                                    <h2 className="text-2xl font-bold flex items-center gap-2"><LucideIcon name="BookOpen" className="text-indigo-600" /> 주기율표 학습</h2>
+                                    <div className="overflow-x-auto pb-6 custom-scrollbar">
+                                        <div className="grid gap-2 min-w-[1050px] grid-cols-18">
+                                            {ELEMENTS_DATA.filter(el => !el.isExtra).map(el => (
+                                                <div key={el.atomicNumber} style={{ gridColumn: el.group, gridRow: el.period }} className={`p-2 border-2 rounded-xl flex flex-col items-center bg-white ${CATEGORY_COLORS[el.category] || 'bg-slate-50'}`}>
+                                                    <span className="text-[8px] font-bold opacity-40">{el.atomicNumber}</span>
+                                                    <span className="text-2xl font-black">{el.symbol}</span>
+                                                    <span className="text-[10px] font-bold">{el.name}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <h3 className="font-bold text-slate-700">추가 금속 원소</h3>
+                                    <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-2">
+                                        {ELEMENTS_DATA.filter(el => el.isExtra).map(el => (
+                                            <div key={el.atomicNumber} className="p-3 border-2 border-slate-100 rounded-xl flex flex-col items-center bg-white">
                                                 <span className="text-2xl font-black">{el.symbol}</span>
                                                 <span className="text-[10px] font-bold">{el.name}</span>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
-                                <h3 className="text-lg font-bold text-slate-700">주요 금속 원소 (기호 & 이름)</h3>
-                                <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-2">
-                                    {ELEMENTS_DATA.filter(el => el.isExtra).map(el => (
-                                        <div key={el.atomicNumber} className="p-3 border-2 border-slate-100 rounded-xl bg-white flex flex-col items-center">
-                                            <span className="text-[8px] font-bold opacity-30 self-start">{el.atomicNumber}</span>
-                                            <span className="text-2xl font-black">{el.symbol}</span>
-                                            <span className="text-[10px] font-bold">{el.name}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
+                            )}
 
-                        {view === 'quiz' && (
-                            <div className="flex-1 flex flex-col space-y-8 w-full max-w-4xl mx-auto">
-                                <div className="flex items-center justify-between">
-                                    <div className="w-1/3"><div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-indigo-500" style={{ width: `${((quizState.currentIndex + 1) / QUIZ_COUNT) * 100}%` }}></div></div></div>
-                                    <div className={`flex flex-col items-center w-1/3 ${quizState.timeLeft <= 3 ? 'text-red-500 animate-pulse' : 'text-slate-600'}`}><Icon name="Timer" size={24} /><span className="text-xl font-black">{quizState.timeLeft}s</span></div>
-                                    <div className="w-1/3 text-right text-xl font-black text-indigo-600">{quizState.score}</div>
+                            {view === 'quiz' && (
+                                <div className="flex-1 flex flex-col space-y-8 w-full max-w-4xl mx-auto">
+                                    <div className="flex items-center justify-between">
+                                        <div className="w-1/3"><div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-indigo-500 transition-all" style={{ width: `${((quizState.currentIndex + 1) / QUIZ_COUNT) * 100}%` }}></div></div></div>
+                                        <div className="flex flex-col items-center w-1/3 text-slate-600"><LucideIcon name="Timer" size={24} /><span className="text-xl font-black">{quizState.timeLeft}s</span></div>
+                                        <div className="w-1/3 text-right text-xl font-black text-indigo-600">{quizState.score}</div>
+                                    </div>
+                                    <div className="text-center py-4">
+                                        <span className="px-4 py-1.5 bg-indigo-50 text-indigo-600 text-[10px] font-black rounded-full uppercase">Q. {quizState.currentIndex + 1} / {QUIZ_COUNT}</span>
+                                        <h3 className="text-2xl md:text-4xl font-black text-slate-800 mt-4 break-keep">{quizState.questions[quizState.currentIndex].qText}</h3>
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-xl mx-auto">
+                                        {quizState.questions[quizState.currentIndex].opts.map((o, idx) => {
+                                            const isC = o === quizState.questions[quizState.currentIndex].ans;
+                                            const isS = quizState.selectedOption === o;
+                                            let bCls = "p-6 border-2 rounded-2xl text-lg font-bold transition-all flex items-center justify-between ";
+                                            if (quizState.showFeedback) {
+                                                if (isC) bCls += "border-emerald-500 bg-emerald-50 text-emerald-700";
+                                                else if (isS) bCls += "border-red-500 bg-red-50 text-red-700";
+                                                else bCls += "opacity-40";
+                                            } else { bCls += "border-slate-100 hover:border-indigo-400 bg-white"; }
+                                            return <button key={idx} disabled={quizState.showFeedback} onClick={() => handleAnswer(o)} className={bCls}><span>{o}</span>{quizState.showFeedback && (isC ? <LucideIcon name="CheckCircle2" className="text-emerald-600" /> : isS ? <LucideIcon name="XCircle" className="text-red-600" /> : null)}</button>;
+                                        })}
+                                    </div>
                                 </div>
-                                <div className="text-center py-4">
-                                    <span className="px-4 py-1.5 bg-indigo-50 text-indigo-600 text-[10px] font-black rounded-full uppercase">Q. {quizState.currentIndex + 1} / {QUIZ_COUNT}</span>
-                                    <h3 className="text-2xl md:text-4xl font-black text-slate-800 mt-4 leading-snug">{quizState.questions[quizState.currentIndex].questionText}</h3>
-                                </div>
-                                <div className={`grid ${quizState.questions[quizState.currentIndex].options.length === 2 ? 'grid-cols-2' : 'grid-cols-1 sm:grid-cols-2'} gap-4 w-full max-w-xl mx-auto`}>
-                                    {quizState.questions[quizState.currentIndex].options.map((option, idx) => {
-                                        const isCorrect = option === quizState.questions[quizState.currentIndex].correctAnswer;
-                                        const isSelected = quizState.selectedOption === option;
-                                        let btnClass = "p-6 border-2 rounded-2xl text-lg font-bold transition-all flex items-center justify-between ";
-                                        if (quizState.showFeedback) {
-                                            if (isCorrect) btnClass += "border-emerald-500 bg-emerald-50 text-emerald-700";
-                                            else if (isSelected) btnClass += "border-red-500 bg-red-50 text-red-700";
-                                            else btnClass += "opacity-40";
-                                        } else { btnClass += "border-slate-100 hover:border-indigo-400 bg-white"; }
-                                        return <button key={idx} disabled={quizState.showFeedback} onClick={() => handleAnswer(option)} className={btnClass}><span>{option}</span>{quizState.showFeedback && (isCorrect ? <Icon name="CheckCircle2" className="text-emerald-600" /> : isSelected ? <Icon name="XCircle" className="text-red-600" /> : null)}</button>;
-                                    })}
-                                </div>
-                            </div>
-                        )}
+                            )}
 
-                        {view === 'result' && (
-                            <div className="flex-1 flex flex-col items-center justify-center text-center space-y-8 max-w-xl mx-auto">
-                                <Icon name={fb.icon} size={64} className={fb.color} />
-                                <div className="text-6xl font-black ${fb.color}">${quizState.score} <span className="text-xl text-slate-400">/ ${QUIZ_COUNT}</span></div>
-                                <div className="space-y-2"><h2 className="text-3xl font-black text-slate-800">${fb.title}</h2><p className="text-slate-500 font-medium">${fb.sub}</p></div>
-                                <div className="flex gap-4 w-full pt-4"><button onClick={startQuiz} className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-black hover:bg-indigo-700 shadow-xl flex items-center justify-center gap-2"><Icon name="RefreshCw" size={20} /> 다시 도전</button><button onClick={() => setView('home')} className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold">홈으로</button></div>
-                            </div>
-                        )}
-                    </main>
-                    <footer className="mt-8 text-center text-slate-400 text-[11px] font-medium">Created by <span className="text-indigo-500 font-extrabold">쿙쌤</span></footer>
+                            {view === 'result' && (
+                                <div className="flex-1 flex flex-col items-center justify-center text-center space-y-8 max-w-xl mx-auto">
+                                    <LucideIcon name={feedback.i} size={64} className={feedback.c} />
+                                    <div className="text-6xl font-black">{quizState.score} <span className="text-xl text-slate-400">/ {QUIZ_COUNT}</span></div>
+                                    <div className="space-y-2"><h2 className={`text-3xl font-black ${feedback.c}`}>{feedback.t}</h2><p className="text-slate-500 font-medium">{feedback.s}</p></div>
+                                    <div className="flex gap-4 w-full pt-4">
+                                        <button onClick={startQuiz} className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-black hover:bg-indigo-700 shadow-xl flex items-center justify-center gap-2"><LucideIcon name="RefreshCw" size={20} /> 다시 도전</button>
+                                        <button onClick={() => setView('home')} className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold">홈으로</button>
+                                    </div>
+                                </div>
+                            )}
+                        </main>
+                        <footer className="mt-8 text-center text-slate-400 text-[11px] font-medium">Created by <span className="text-indigo-500 font-extrabold">쿙쌤</span></footer>
+                    </div>
                 </div>
             );
         }
