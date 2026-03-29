@@ -208,7 +208,7 @@
                                 <h1 className="text-2xl font-bold text-slate-800">주기율표 마스터</h1>
                             </div>
                             {view !== 'home' && (
-                                <button onClick={() => setView('home')} className="flex items-center gap-1 text-slate-500 font-bold hover:text-indigo-600 transition-colors focus:outline-none">
+                                <button onClick={() => setView('home')} className="flex items-center gap-1 text-slate-500 font-bold md:hover:text-indigo-600 transition-colors focus:outline-none">
                                     ⬅️ 처음으로
                                 </button>
                             )}
@@ -218,19 +218,19 @@
                             {view === 'home' && (
                                 <div className="flex-1 flex flex-col items-center justify-center text-center space-y-8 max-w-4xl mx-auto">
                                     <div className="space-y-4">
-                                        <h2 className="text-4xl font-black text-slate-800 leading-tight">원소의 모든 정보를 <br/><span className="text-indigo-600">완벽하게</span> 맞혀보세요!</h2>
+                                        <h2 className="text-4xl font-black text-slate-800 leading-tight">원소의 핵심 정보를 <br/><span className="text-indigo-600">완벽하게</span> 맞혀보세요!</h2>
                                         <p className="text-slate-500 max-w-md mx-auto leading-relaxed">
                                             원소 기호, 이름부터 족, 주기, 원자가 전자 수, 그리고 화학적 분류까지 다양한 유형의 문제를 풀어보세요.
                                         </p>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-lg">
-                                        <button onClick={() => setView('study')} className="group p-6 border-2 border-indigo-50 rounded-2xl hover:border-indigo-500 hover:bg-indigo-50 transition-all text-left bg-white focus:outline-none">
-                                            <div className="text-4xl mb-3">📖</div>
+                                        <button onClick={() => setView('study')} className="group p-6 border-2 border-indigo-50 rounded-2xl md:hover:border-indigo-500 md:hover:bg-indigo-50 transition-all text-left bg-white focus:outline-none">
+                                            <div className="text-4xl mb-3 md:group-hover:scale-110 transition-transform">📖</div>
                                             <h3 className="font-bold text-lg">학습 모드</h3>
                                             <p className="text-sm text-slate-500">핵심 원소들의 정보를 한눈에 확인하며 학습합니다.</p>
                                         </button>
-                                        <button onClick={startQuiz} className="group p-6 border-2 border-emerald-50 rounded-2xl hover:border-emerald-500 hover:bg-emerald-50 transition-all text-left bg-white focus:outline-none">
-                                            <div className="text-4xl mb-3">🧠</div>
+                                        <button onClick={startQuiz} className="group p-6 border-2 border-emerald-50 rounded-2xl md:hover:border-emerald-500 md:hover:bg-emerald-50 transition-all text-left bg-white focus:outline-none">
+                                            <div className="text-4xl mb-3 md:group-hover:scale-110 transition-transform">🧠</div>
                                             <h3 className="font-bold text-lg">실전 퀴즈</h3>
                                             <p className="text-sm text-slate-500">무작위로 출제되는 문제를 풀며 실력을 테스트합니다.</p>
                                         </button>
@@ -256,7 +256,7 @@
                                             {/* 💡 불필요한 빈칸을 없애기 위해 18칸에서 8칸 배열로 압축했습니다. */}
                                             <div className="grid gap-2 min-w-[550px] lg:min-w-full" style={{ gridTemplateColumns: 'repeat(8, minmax(0, 1fr))' }}>
                                                 {ELEMENTS_DATA.filter(el => !el.isExtra).map(el => (
-                                                    <div key={el.atomicNumber} style={{ gridColumn: getCompactCol(el.group), gridRow: el.period }} className={`p-2 sm:p-3 border-2 rounded-2xl flex flex-col items-center justify-between bg-white hover:scale-105 hover:shadow-lg transition-transform ${CATEGORY_COLORS[el.category] || 'bg-slate-50 border-slate-200'}`}>
+                                                    <div key={el.atomicNumber} style={{ gridColumn: getCompactCol(el.group), gridRow: el.period }} className={`p-2 sm:p-3 border-2 rounded-2xl flex flex-col items-center justify-between bg-white md:hover:scale-105 md:hover:shadow-lg transition-transform ${CATEGORY_COLORS[el.category] || 'bg-slate-50 border-slate-200'}`}>
                                                         {/* 💡 원소 번호와 족을 분리하여 위아래로 배치했습니다. */}
                                                         <div className="w-full text-left text-[9px] sm:text-[10px] font-black opacity-60 leading-tight">
                                                             <div>{el.atomicNumber}</div>
@@ -273,7 +273,7 @@
                                         <h3 className="text-lg font-bold text-slate-700 flex items-center gap-2"><div className="w-1.5 h-6 bg-amber-500 rounded-full"></div>기타 주요 금속 원소 (기호 & 이름)</h3>
                                         <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-3">
                                             {ELEMENTS_DATA.filter(el => el.isExtra).map(el => (
-                                                <div key={el.atomicNumber} className="p-4 border-2 border-slate-100 rounded-2xl bg-white flex flex-col items-center justify-center hover:border-amber-300 transition-colors shadow-sm">
+                                                <div key={el.atomicNumber} className="p-4 border-2 border-slate-100 rounded-2xl bg-white flex flex-col items-center justify-center md:hover:border-amber-300 transition-colors shadow-sm">
                                                     <span className="text-[10px] font-black opacity-30 self-start mb-1">{el.atomicNumber}</span>
                                                     <span className="text-3xl font-black text-slate-800">{el.symbol}</span>
                                                     <span className="text-sm font-bold text-slate-600 mt-1">{el.name}</span>
@@ -312,6 +312,7 @@
                                             {quizState.questions[quizState.currentIndex].opts.map((opt, idx) => {
                                                 const isCorrect = opt === quizState.questions[quizState.currentIndex].ans;
                                                 const isSelected = quizState.selectedOption === opt;
+                                                // 💡 모바일 터치 잔상 제거를 위해 hover: 속성을 md:hover: 로 변경하여 모바일에서 hover 방지
                                                 let btnClass = "group relative p-6 border-2 rounded-2xl text-lg font-bold transition-all flex items-center justify-between outline-none focus:outline-none focus:ring-0 ";
                                                 
                                                 if (quizState.showFeedback) {
@@ -319,7 +320,7 @@
                                                     else if (isSelected) btnClass += "border-red-500 bg-red-50 text-red-700";
                                                     else btnClass += "border-slate-50 opacity-40";
                                                 } else { 
-                                                    btnClass += "border-slate-100 hover:border-indigo-400 hover:bg-slate-50 bg-white text-slate-700 shadow-sm active:bg-slate-50"; 
+                                                    btnClass += "border-slate-100 md:hover:border-indigo-400 md:hover:bg-slate-50 bg-white text-slate-700 shadow-sm active:bg-slate-100"; 
                                                 }
                                                 
                                                 return (
@@ -362,10 +363,10 @@
                                         <p className="text-slate-500 font-medium">{fb.sub}</p>
                                     </div>
                                     <div className="flex gap-4 w-full pt-4 mx-auto">
-                                        <button onClick={startQuiz} className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-black hover:bg-indigo-700 shadow-xl flex items-center justify-center gap-2 focus:outline-none">
+                                        <button onClick={startQuiz} className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-black md:hover:bg-indigo-700 shadow-xl flex items-center justify-center gap-2 focus:outline-none">
                                             🔄 다시 도전
                                         </button>
-                                        <button onClick={() => setView('home')} className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-200 focus:outline-none">
+                                        <button onClick={() => setView('home')} className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold md:hover:bg-slate-200 focus:outline-none">
                                             홈으로
                                         </button>
                                     </div>
